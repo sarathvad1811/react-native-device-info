@@ -8,6 +8,10 @@
 
 #import "RNDeviceInfo.h"
 #import "DeviceUID.h"
+#import <ifaddrs.h>
+#import <arpa/inet.h>
+#include <net/if.h>
+
 #if !(TARGET_OS_TV)
 #import <LocalAuthentication/LocalAuthentication.h>
 #endif
@@ -312,6 +316,33 @@ RCT_EXPORT_METHOD(getBatteryLevel:(RCTPromiseResolveBlock)resolve rejecter:(RCTP
     float batteryLevel = [UIDevice currentDevice].batteryLevel;
   #endif
     resolve(@(batteryLevel));
+}
+
+RCT_EXPORT_METHOD(getIpAddress:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString *address = @"error";
+    
+    struct ifaddrs *interfaces = NULL;
+    struct ifaddrs *temp_addr = NULL;
+    int success = 0;
+    
+    success = getifaddrs(&interfaces);
+    
+    if (success == 0) {
+        temp_addr = interfaces;
+        while(temp_addr != NULL) {
+            if(temp_addr->ifa_addr->sa_family == AF_INET) {
+                if([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"]) {
+                    address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
+                }
+            }
+            temp_addr = temp_addr->ifa_next;
+        }
+    }
+    
+    freeifaddrs(interfaces);
+//    callback(@[address]);
+    resolve(@[address]);
 }
 
 @end
